@@ -1,0 +1,10 @@
+# The solver needs a language model, which means PyTorch (a few hundred MB on CPU).
+# On an NVIDIA GPU, install the CUDA build of torch FIRST, following
+# https://pytorch.org/get-started/locally/ — then run this file for the rest.
+# Apple Silicon needs nothing special.
+torch>=2.2
+transformers>=4.56
+accelerate>=0.33
+
+# tests
+pytest>=8.0
