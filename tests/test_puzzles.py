@@ -80,10 +80,16 @@ def test_from_text():
         from_text("123 -- 456", "PHRASE")  # nothing to guess
 
 
-def test_from_text_refuses_characters_the_search_could_never_write():
-    """A board position holding one of these can never be filled, so say so instead of searching."""
+def test_a_board_shows_everything_that_is_not_a_letter():
+    """Digits and punctuation are never hidden, and the search has to be able to write them."""
     assert from_text("ROCK 'N' ROLL 24/7", "PHRASE").board("O").template == "_O__ '_' _O__ 24/7"
-    for bad in ("50% OFF SALE", "CAFE\u2605 NIGHT"):
+    assert from_text("50% OFF SALE", "PHRASE").board().template == "50% ___ ____"
+    assert from_text("$1,000 A DAY!", "PHRASE").board("A").template == "$1,000 A _A_!"
+
+
+def test_from_text_refuses_characters_no_board_can_show():
+    for bad in ("CAFE\u2605 NIGHT",   # not ASCII, so no token can write it
+                "TOP_SECRET"):        # "_" is how a hidden slot is written
         with pytest.raises(ValueError, match="can't write"):
             from_text(bad, "PHRASE")
 

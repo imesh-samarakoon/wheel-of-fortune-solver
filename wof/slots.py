@@ -16,7 +16,7 @@ This module is the model-free half:
 - ``word_marginals``  P(board word i is w), summed over the candidate answers
 - ``open_slots``      which board words to fill: every other word that still has a hidden letter
                       is confident (its most likely word >= ``min_confidence``)
-- ``build_vocab``     a word list (with counts) from past puzzles' answers
+- ``build_vocab``     the word list: past puzzles' answers, then a plain list of common words
 - ``slot_words``      the words that fit board word i, most common first
 - ``match_case``      write a word the way the word it replaces is written ("Wish" for "Fish")
 """
@@ -26,6 +26,7 @@ from __future__ import annotations
 import re
 from collections import Counter
 from collections.abc import Iterable, Mapping
+from pathlib import Path
 
 from .board import HIDDEN, LETTERS, Board, normalize
 
@@ -86,16 +87,36 @@ def open_slots(marginals: list[dict[str, float]], board: Board,
     return out
 
 
-def build_vocab(answers: Iterable) -> Counter:
-    """Every word in ``answers`` with how many answers it appears in (the ``slot_words`` ranking).
+ANSWER_WORD_BONUS = 1000  # a word seen in a real answer outranks any word only in the word list
 
-    ``answers``: strings or anything with an ``.answer`` (e.g. ``Puzzle``s). Build it from the
-    example pool only (never the test puzzles), so the word list can't give a test answer away.
+
+def build_vocab(answers: Iterable, words_file: str | Path | None = None) -> Counter:
+    """The words a single open board word can be filled with, and how highly each one ranks.
+
+    Two sources, deliberately kept apart by rank:
+
+    - ``answers`` (strings, or anything with an ``.answer``, e.g. ``Puzzle``s): each word scores
+      ``ANSWER_WORD_BONUS`` plus how many answers contain it. These are the words that actually
+      turn up in puzzle answers, which is the signal worth having, so they always rank first.
+    - ``words_file``: a plain word list, one word per line, ``#`` comments ignored (the bundled
+      ``data/words.txt``). Each word scores 1. It is only there for coverage: a word the answers
+      never use, like "WISH", has to come from somewhere.
+
+    Build the ``answers`` half from the example pool only, never from the puzzles being solved, or
+    the word list could hand over an answer.
     """
     vocab: Counter = Counter()
+    if words_file is not None:
+        for line in Path(words_file).read_text(encoding="utf-8").splitlines():
+            if line.startswith("#"):
+                continue
+            w = normalize(line)
+            if w and " " not in w and any(c in LETTERS for c in w):
+                vocab[w] = 1
     for a in answers:
         text = normalize(getattr(a, "answer", a))
-        vocab.update(set(w for w in text.split(" ") if any(c in LETTERS for c in w)))
+        for w in set(x for x in text.split(" ") if any(c in LETTERS for c in x)):
+            vocab[w] = max(vocab.get(w, 0), ANSWER_WORD_BONUS) + 1
     return vocab
 
 

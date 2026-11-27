@@ -18,7 +18,7 @@ Everything else — which letter to call, how sure it is, when to guess — fall
 ```
 ── TURN 3   __A__ _A__ ──────────────────────────────────────────────────────────
 called so far: A E R   (not in puzzle: E R)   7 letters hidden
-58 candidate answers, entropy 3.06 bits   (4.0s)
+58 candidate answers, entropy 3.06 bits   (4.8s)
 most likely  : BLACK JACK  29.8%  (wrong)
 true answer  : rank 2, 26.8%   (scored directly, the model rates it 0.901x as likely as the top answer)
 top answers  : SMALL TALK 26.8% · BLACK CATS 8.1% · BLACK HAND 7.6% · BLANK WALL 6.6%
@@ -42,7 +42,7 @@ python play.py            # play a puzzle and watch the solver work
 The first run downloads the model (~3 GB, once) — there is no account or token involved.
 
 **How long a game takes.** On an ordinary CPU with the defaults, a short puzzle is about a minute
-(`BREAK THE ICE` took 53 seconds and one letter) and a long phrase is several minutes. For something
+(`BREAK THE ICE` took 62 seconds and one letter) and a long phrase is several minutes. For something
 quicker, set `MODEL = "Qwen/Qwen2.5-0.5B"` in `config.py` — three times faster, and wrong in more
 interesting ways — or pass `play.py --no-fill`. [`docs/setup.md`](docs/setup.md) has the measured
 numbers and every other knob.
@@ -59,10 +59,10 @@ model's distribution the search missed, and finally the whole puzzle played out.
 **Play puzzles** — [`play.py`](play.py), including your own:
 
 ```bash
-python play.py                                      # one of the 100 bundled puzzles, at random
+python play.py                                      # one of the 101 bundled puzzles, at random
 python play.py 42                                   # puzzle 42
 python play.py "DOUBLE DUTCH"                       # by part of its answer
-python play.py --list                               # all 100, as boards, no spoilers
+python play.py --list                               # all 101, as boards, no spoilers
 python play.py --new                                # type in your own, at the prompt
 python play.py --answer "A WISH COME TRUE" --category PHRASE
 python play.py --called RSTLNE                      # start from a board that already shows R S T L N E
@@ -89,7 +89,8 @@ Good first things to change: `MODEL` (`Qwen/Qwen2.5-0.5B` is three times faster 
 config.py            every setting, plus a setup check
 explore.py           the walkthrough: one puzzle, every step printed
 play.py              play a bundled or your own puzzle
-data/puzzles.json    100 puzzles to play + 144 kept aside as prompt examples
+data/puzzles.json    101 puzzles to play + 208 kept aside as prompt examples
+data/words.txt       43,653 common English words, for filling a single open board word
 docs/how-it-works.md the design, and what went wrong before it worked
 docs/setup.md        Python, Hugging Face, and the optional answer judge
 wof/
@@ -161,3 +162,7 @@ its HTTP handling (mocked), the word-filling pass, and the bundled puzzle file.
 ## Licence
 
 MIT. See [LICENSE](LICENSE).
+
+`data/words.txt` is derived from the English Speller Database (SCOWL), copyright 2000-2026 Kevin
+Atkinson, and is redistributed under its own permission notice, which is reproduced at the top of
+that file. The puzzles in `data/puzzles.json` are written for this repo.

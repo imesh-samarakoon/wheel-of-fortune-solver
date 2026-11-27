@@ -27,10 +27,12 @@ VOWELS = frozenset("AEIOU")
 CONSONANTS = frozenset(LETTERS) - VOWELS  # Y counts as a consonant on the show
 FREQUENCY_ORDER = "ETAOINSRHLDCUMFPGWYBVKXJQZ"  # English letter frequency, most common first
 HIDDEN = "_"
-# Everything a board may hold besides letters. These are always shown, never guessed, and the
-# search can only write an answer out of letters and these (``wof.search.ANSWER_CHARS``), so a
-# character outside this set would leave a board position no token at all can fill.
-BOARD_PUNCTUATION = " '-&.,!?:\"/0123456789"
+# Everything a board may hold besides letters: digits, space, and every printable ASCII
+# punctuation mark except "_", which is reserved for a hidden slot. These are always shown and
+# never guessed. They also bound what the search may write (``wof.search.ANSWER_CHARS``): a
+# character outside this set would leave a board position that no token at all can fill, which is
+# why the set is deliberately generous rather than a list of the marks puzzles usually use.
+BOARD_PUNCTUATION = " " + string.digits + "".join(c for c in string.punctuation if c != HIDDEN)
 
 
 def normalize(text: str) -> str:
@@ -45,10 +47,14 @@ def is_letter(c: str) -> bool:
     return c in LETTERS
 
 
-def unwritable(text: str) -> list[str]:
-    """Characters of ``text`` that no answer can contain (so no search could ever fill them in)."""
-    ok = set(LETTERS) | set(BOARD_PUNCTUATION) | {HIDDEN}
-    return sorted({c for c in normalize(text) if c not in ok})
+def unwritable(answer: str) -> list[str]:
+    """Characters of ``answer`` that can't be on a board, so no search could ever write them.
+
+    Anything outside ``LETTERS`` and ``BOARD_PUNCTUATION``, which in practice means ``_`` (reserved
+    for a hidden slot) and non-ASCII that survives ``normalize`` (CJK, emoji, box drawing).
+    """
+    ok = set(LETTERS) | set(BOARD_PUNCTUATION)
+    return sorted({c for c in normalize(answer) if c not in ok})
 
 
 @dataclass(frozen=True)

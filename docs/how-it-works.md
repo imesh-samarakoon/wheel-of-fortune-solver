@@ -33,7 +33,9 @@ scoring an arbitrary string (`log P(answer | prompt)` for an answer you hand it)
 
 - It **decides which answers exist.** At each step we precompute which of the model's ~150,000
   tokens could be written at that board position: a blank takes any *uncalled* letter (either case),
-  a revealed letter takes itself, punctuation must match, and nothing may run past the end.
+  a revealed letter takes itself, punctuation must match, and nothing may run past the end. Only
+  letters are ever hidden, so a digit or a punctuation mark is shown from the start and the search
+  has to write it back exactly — `50% OFF SALE` starts life as `50% ___ ____`.
 - It is **not** used to score the answers. Each answer's score is the model's plain
   `log P(answer | prompt)` — the product of its tokens' probabilities, plus `log P(stop)` once the
   board is full. Renormalizing that over the board-fitting answers is Bayes' rule,
@@ -142,10 +144,27 @@ So: when every *other* word of the phrase is settled (its most likely word holds
 that fits its pattern into it, and **score each whole answer**. The late payoff then counts, and the
 candidate comes from the word list rather than from the model's left-to-right ranking.
 
-This is the most expensive part of a turn — each fill is a whole answer through the model, and a
-turn that fires can score a few thousand of them — so only the turns where the rest of the phrase is
-settled pay it, one board word at a time, skipping words that haven't changed since they were last
-filled.
+The word list is the bundled `data/words.txt` (43,653 common English words, from SCOWL — see the
+notice in the file) plus every word that appears in the example answers, which rank above it: a word
+that really does turn up in puzzle answers is better evidence than one that is merely English. That
+second half alone is a few hundred words and is far too thin — "WISH" is not in it, which is exactly
+the word this pass exists to find.
+
+Each fill is a whole answer through the model, so this is the most expensive part of a turn, and
+`FILL_MAX_WORDS` bounds it as a **gate rather than a cap**. A board word whose pattern still admits
+more than that many words is skipped for now; one that admits fewer has every one of them tried.
+The reasoning: this pass is for finding the single word that completes an almost-settled phrase, and
+a slot where a thousand words still fit is not that. The next revealed letter usually cuts the count
+by an order of magnitude. Truncating to the first *N* words instead would spend the most time on
+exactly the slots where the list's ordering is least meaningful, since the list has no frequency
+data. Measured on the canonical case (`A ____ _O_E _R_E`, 243 list words fit): the pass scores 447
+answers, finds `A WISH COME TRUE`, and the model rates it **10.3x** the best answer the search
+itself wrote.
+
+The words the search wrote into that slot itself are kept separately, also bounded, and ranked by
+the best log P of a partial answer that wrote each one — a real ordering, so truncating those is
+worth doing. A wide search can write over a thousand words into a single slot, and scoring all of
+them was once a 20-minute turn.
 
 ## 7. Which letter to call
 

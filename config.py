@@ -12,6 +12,7 @@ interesting alternatives are; the defaults are the ones that worked best in prac
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 # =====================================================================================
 # 1. THE MODEL
@@ -35,6 +36,12 @@ DEVICE = None
 # None = the bundled data/puzzles.json. Point it at your own file in the same shape to use yours
 # (see wof/puzzles.py for the format).
 PUZZLES_FILE = None
+
+# The word list the fill-one-word pass draws on (section 4), on top of the words that appear in the
+# example answers themselves. None = the example answers only, which is a few hundred words and
+# thin. The bundled data/words.txt is 43,653 common English words; point this at your own file (one
+# word per line, "#" comments ignored) to use that instead.
+FILL_WORDS_FILE = Path(__file__).resolve().parent / "data" / "words.txt"
 
 # How many solved puzzles go in the prompt as worked examples, before the one being solved. They
 # come from the example pool, which never contains a playable answer, so an example can't give the
@@ -114,11 +121,17 @@ CARRY = 10
 # is faster but leaves the solver stuck on puzzles of that shape.
 FILL_SLOTS = True
 
-# It is the most expensive thing in a turn, because every fill is a whole answer through the model.
-# These two bound it: at most FILL_MAX_WORDS x FILL_CONTEXTS answers are scored per board word, and
-# only one board word is filled per turn. Measured on a laptop CPU: 300 fills is ~20s with the 0.5B
-# model, ~2.5 minutes with the 1.5B one. Halve FILL_MAX_WORDS if a turn feels too slow — the words
-# are tried most-common-first, so what you lose is the rarer end of the list.
+# It is the most expensive thing in a turn, because every fill is a whole answer through the model,
+# so FILL_MAX_WORDS bounds it — as a GATE, not a cap. A board word with more than this many fitting
+# words is left alone until another letter is revealed; one with fewer has all of them tried. (The
+# words the search itself wrote into that slot are a second budget of the same size, ranked by how
+# well they scored, and tried either way.) So a filled board word costs at most
+# 2 x FILL_MAX_WORDS x FILL_CONTEXTS answers, and only one board word is filled per turn.
+#
+# 300 is chosen from the case this whole pass exists for: "A ____ _O_E _R_E" (A WISH COME TRUE with
+# A E L O R called) has 243 fitting words, and filling it finds the answer at 10.3x the best answer
+# the search itself wrote. Much below 300 and that slot gets gated out instead.
+# Measured on a laptop CPU, batch 32: ~250-450 fills is ~4-6s with the 0.5B model, ~30s with 1.5B.
 FILL_MAX_WORDS = 300
 # Rest-of-the-phrase variants to fill into (the best answers that differ outside the open word). 1 =
 # only the leading phrasing, which is usually the only one that matters; 2 doubles the cost.
@@ -236,10 +249,14 @@ def prompt_examples(puzzle, pool=None, seed: int = 0):
 
 
 def fill_vocab(pool):
-    """The word list ``FILL_SLOTS`` fills single board words from (the example answers' words)."""
+    """The word list ``FILL_SLOTS`` fills single board words from.
+
+    The example answers' own words first (the words that really do turn up in answers), then
+    ``FILL_WORDS_FILE`` for coverage.
+    """
     from wof.slots import build_vocab
 
-    return build_vocab(pool)
+    return build_vocab(pool, FILL_WORDS_FILE)
 
 
 def turn_solver(solver, puzzle, examples, *, judge=None, vocab=None, truth: str | None = None):
@@ -317,11 +334,13 @@ def status() -> None:
     print("\n── SETTINGS " + "─" * 68)
     for name in ("MODEL", "DEVICE", "N_EXAMPLES", "SAME_CATEGORY", "ANSWER_STYLE", "SHOW_BOARD",
                  "EXAMPLE_REVEAL", "SHOW_CALLED", "BEAMS", "EXPAND", "MAX_PER_FIRST_WORD", "KEEP",
-                 "CASE", "POLICY", "KIND", "CARRY", "FILL_SLOTS", "FILL_MAX_WORDS", "FILL_CONTEXTS", "FILL_MIN_CONFIDENCE",
+                 "CASE", "POLICY", "KIND", "CARRY", "FILL_SLOTS", "FILL_WORDS_FILE", "FILL_MAX_WORDS", "FILL_CONTEXTS",
+                 "FILL_MIN_CONFIDENCE",
                  "SOLVE_AT", "SOLVE_MIN_TOP",
                  "SOLVE_SIGNAL", "GAME_SAMPLES", "USE_JUDGE", "JUDGE_MODEL", "JUDGE_WEIGHT",
                  "JUDGE_PRIOR_UNKNOWN", "JUDGE_REAL_RATE"):
-        print(f"  {name:<22} {globals()[name]!r}")
+        value = globals()[name]
+        print(f"  {name:<22} " + (str(value) if isinstance(value, Path) else repr(value)))
     print("\nedit config.py to change any of these, then:  python play.py   (or open explore.py)\n")
 
 

@@ -73,7 +73,8 @@ def test_open_slots_needs_the_rest_of_the_phrase_settled():
 
 def test_build_vocab_and_slot_words():
     vocab = build_vocab(["MAKE A WISH", "WISH YOU WERE HERE", "A DOG'S LIFE"])
-    assert vocab["WISH"] == 2 and vocab["A"] == 2 and vocab["DOG'S"] == 1
+    # a word in two answers outranks one in a single answer, and both outrank the word list
+    assert vocab["WISH"] == vocab["A"] > vocab["DOG'S"] > 1
     # word 2 of TURN5 is 4 letters, none of A E L O R
     words = slot_words(TURN5, 1, VOCAB)
     assert "WISH" in words and "FISH" in words and "CITY" in words and "JUST" in words
@@ -81,6 +82,26 @@ def test_build_vocab_and_slot_words():
     assert words.index("WISH") == 0  # most common first (2 answers)
     assert slot_words(TURN5, 1, VOCAB, limit=2) == words[:2]
     assert slot_words(TURN5, 2, VOCAB) == ["COME"]  # _O_E
+
+
+def test_a_word_list_file_fills_in_what_the_answers_miss(tmp_path):
+    """The point of the word list: "WISH" never appears in an answer, so it has to come from there."""
+    answers = ["A FISH OUT OF WATER"]
+    assert "WISH" not in build_vocab(answers)
+    path = tmp_path / "words.txt"
+    path.write_text("# a comment, and a blank line\n\nwish\nfish\nnot a word\n", encoding="utf-8")
+    vocab = build_vocab(answers, path)
+    assert "WISH" in vocab and "NOT A WORD" not in vocab  # one word per line, uppercased
+    assert vocab["FISH"] > vocab["WISH"]  # a word the answers use outranks one only in the list
+
+
+def test_the_bundled_word_list_is_usable():
+    import config
+
+    vocab = build_vocab([], config.FILL_WORDS_FILE)
+    assert len(vocab) > 20_000
+    assert {"WISH", "TALK", "PETUNIAS", "ZEBRA"} <= set(vocab)
+    assert not any(c.islower() for w in vocab for c in w)
 
 
 def test_match_case():

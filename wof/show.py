@@ -204,7 +204,10 @@ def fill_lines(fill: dict | None) -> list[str]:
             line += f", best {answer} ({ratio:.3g}x the search's top answer)"
         line += f", {len(r['added'])} added" if r["added"] else ", none good enough to add"
         out.append(line)
-    why = {"unchanged": "unchanged since an earlier turn", "max_slots": "one word per turn (max_slots)"}
+    why = {"unchanged": "unchanged since an earlier turn", "max_slots": "one word per turn (max_slots)",
+           "too many words fit": "too many words still fit it to be worth a model pass each "
+                                 "(FILL_MAX_WORDS); another revealed letter will cut that down",
+           "no word fits": "nothing in the word list or the search fits it"}
     for r in fill.get("skipped", []):
         out.append(f"word {r['word'] + 1} {r['pattern']}: not filled, {why.get(r['reason'], r['reason'])}")
     if out:

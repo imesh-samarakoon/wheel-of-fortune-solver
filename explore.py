@@ -123,10 +123,15 @@ if SHOW_ANSWER:
 # writes "A Fish Come True", because " A W" is an unlikely *start* even though the whole phrase is
 # ~80x likelier. So: when every other word of the phrase is settled, try every word of a word list
 # in the one open word and score each whole answer. The late payoff then counts.
+#
+# A board word is only filled when few enough words still fit it (config.FILL_MAX_WORDS); a slot
+# where hundreds do isn't settled enough to be worth a model pass each, and the next revealed letter
+# usually cuts the count sharply. To watch it pay off, go back up to PICK A PUZZLE and set
+# WHICH = "A WISH COME TRUE" with CALLED = "AELOR", then run down to here again.
 # (config.FILL_SLOTS turns this on during a game; here it runs regardless so you can see it.)
 vocab = config.fill_vocab(puzzles.examples)
-print(f"word list: {len(vocab):,} distinct words from {len(puzzles.examples)} example answers "
-      f"(a bigger example pool makes this stronger)")
+print(f"word list: {len(vocab):,} words — data/words.txt plus every word in the "
+      f"{len(puzzles.examples)} example answers, which rank above it")
 fill = solver.fill_slots(prompt, board, beam, vocab, case=config.CASE, keep=8,
                          min_confidence=config.FILL_MIN_CONFIDENCE, max_words=config.FILL_MAX_WORDS,
                          contexts=config.FILL_CONTEXTS)

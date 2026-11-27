@@ -71,8 +71,8 @@ Measured on an ordinary cloud CPU, no GPU, default settings:
 | | 0.5B | 1.5B |
 |---|---|---|
 | one search (one turn) | ~4-6 s | ~15 s |
-| a turn that also fills a word | +5 s for 254 fills | +24 s for 296 fills |
-| a whole short puzzle | `SMALL TALK`: **40 s**, 4 letters | `BREAK THE ICE`: **53 s**, 1 letter |
+| a turn that also fills a word | +4 s for 253 fills | +31 s for 386 fills |
+| a whole short puzzle | `SMALL TALK`: **31 s**, 4 letters | `BREAK THE ICE`: **62 s**, 1 letter |
 | the same, `--no-fill` | 21-38 s (three games) | |
 
 A long phrase takes several minutes, because it needs more turns and each turn's search is over a
@@ -101,6 +101,14 @@ The token is stored in `~/.cache/huggingface/token` by Hugging Face itself. **No
 reads or stores it**, and you don't need one at all for the Qwen defaults.
 
 ### If the download fails
+
+- **`HTTP Error 429 ... Rate limited. Waiting 43.0s before retry`** on a model you have already
+  downloaded. Hugging Face is throttling a *metadata* request, not the weights; `transformers`
+  retries on its own and the run continues. To skip the network entirely once the model is cached:
+
+  ```bash
+  export HF_HUB_OFFLINE=1
+  ```
 
 - **Behind a proxy or firewall**: `transformers` honours `HTTPS_PROXY`.
 - **No internet on the machine that runs it**: download on another machine, copy

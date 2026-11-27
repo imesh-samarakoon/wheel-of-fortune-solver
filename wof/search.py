@@ -729,12 +729,9 @@ class LLMSolver:
         - every board word with a hidden letter whose OTHER hidden words are all at
           ``min_confidence`` or more is open (``slots.open_slots``; the answers can be sure of the
           open word itself, e.g. "FISH" at 99%, and it's still worth checking);
-        - into it go the words that fit it, written in the case of the word they replace: the most
-          common ones from ``vocab`` (``slots.slot_words``, e.g. ``slots.build_vocab(examples)``)
-          first, then the words the search itself wrote there (``result.words``) to fill the rest of
-          the budget. ``max_words`` is that whole budget, so the work per slot is bounded: the
-          search's own word bank can run to hundreds of words on a wide search, and scoring every
-          one of them is what used to make a single turn take minutes;
+        - into it go every word that fits it, written in the case of the word it replaces: the ones
+          from ``vocab`` (``slots.slot_words``, e.g. ``slots.build_vocab(examples)`` plus a word
+          list), and the words the search itself wrote there (``result.words``);
         - the rest of the phrase comes from the best ``contexts`` answers that differ outside the
           open word (usually one: "A City Come True" and "A Fish Come True" are the same context);
         - every new answer that fits the board is scored whole (``score_many``: the model's full
@@ -748,9 +745,20 @@ class LLMSolver:
 
         Speed (every fill is a whole answer through the model, so a turn can mean ~1,000 of them):
 
-        - ``max_words`` and ``contexts`` bound it directly: at most ``max_words x contexts`` answers
-          are scored per board word filled. A rough measurement on a laptop CPU, batch 32: ~300
-          fills is ~20s with a 0.5B model and ~2.5 minutes with a 1.5B one.
+        - ``max_words`` is a **gate**, not a cap: a board word whose pattern admits more than this
+          many of ``vocab``'s words is skipped for now (``FillResult.skipped``, reason "too many
+          words fit"), and one that admits fewer has every one of them tried. The reasoning: this
+          pass exists to find the single word that completes an almost-settled phrase, and a slot
+          where a thousand words still fit is not that -- the next revealed letter usually cuts the
+          count by an order of magnitude, and until then a model pass per word buys very little.
+          Truncating to the first ``max_words`` instead would spend the most time on exactly the
+          slots where the list's ordering is least meaningful. The words the search itself wrote
+          there are a separate ``max_words``, kept whether or not the list's were gated out, and
+          ranked by the best log P of a partial answer that wrote each one -- a real ordering, so
+          truncating those IS worth it. A wide search can write over a thousand words into one
+          slot, so this bound matters: at most ``2 x max_words x contexts`` answers are scored for
+          a board word. On a laptop CPU, batch 32, ~300 fills is ~5s with a 0.5B model, ~24s with
+          a 1.5B one.
         - ``max_slots``: fill at most this many board words this call, the least settled first
           (lowest share for its own most likely word). ``None`` = every open word.
         - ``skip``: keys from earlier turns' ``FillResult.done``. A (board word, its pattern on the
@@ -802,15 +810,25 @@ class LLMSolver:
             if picked and not fresh:
                 skipped.append({"word": i, "pattern": pattern, "reason": "unchanged"})
                 continue
-            words = slot_words(board, i, vocab, max_words)
-            searched = result.words[i] if i < len(result.words) else {}  # words the search wrote here
+            # Every word list word that fits -- unless far too many do, in which case this slot
+            # isn't settled enough to be worth a model pass each (see the docstring).
+            words = slot_words(board, i, vocab)
+            loose = max_words is not None and len(words) > max_words
+            if loose:
+                words = []
+            # ... plus the words the search itself wrote here, the best ``max_words`` of them. Their
+            # ranking is the best log P of a partial answer that wrote the word, which is real
+            # evidence, so these are worth trying even when the list's own words were gated out.
+            searched = result.words[i] if i < len(result.words) else {}
             have = set(words)
-            for w in slot_words(board, i, {normalize(w): s for w, s in searched.items()}):
-                if len(words) >= max_words:
-                    break  # ``max_words`` is the whole budget for this slot: see the docstring
+            for w in slot_words(board, i, {normalize(w): s for w, s in searched.items()}, max_words):
                 if w not in have:
                     words.append(w)
                     have.add(w)
+            if not words:
+                skipped.append({"word": i, "pattern": pattern,
+                                "reason": "too many words fit" if loose else "no word fits"})
+                continue
             n_tried = 0
             for text, key in fresh:
                 done.add((i, pattern, key))
