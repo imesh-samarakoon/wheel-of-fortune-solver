@@ -71,8 +71,9 @@ Measured on an ordinary cloud CPU, no GPU, default settings:
 | | 0.5B | 1.5B |
 |---|---|---|
 | one search (one turn) | ~4-6 s | ~15 s |
-| the extra cost of a turn that fills a word | ~10 s | ~24 s (296 fills) |
-| a whole short puzzle | ~60-90 s | `BREAK THE ICE`: **53 s**, solved after one letter |
+| a turn that also fills a word | | +24 s for 296 fills |
+| a whole short puzzle, `--no-fill` | 21-38 s (three games) | |
+| a whole short puzzle | | `BREAK THE ICE`: **53 s**, solved after one letter |
 
 A long phrase takes several minutes, because it needs more turns and each turn's search is over a
 longer board. A GPU is several times faster.

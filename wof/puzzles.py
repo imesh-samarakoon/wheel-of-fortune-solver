@@ -116,8 +116,9 @@ def load_puzzles(path: str | Path | None = None) -> Puzzles:
     """
     path = Path(path or DATA_FILE)
     if not path.exists():
-        raise FileNotFoundError(f"no puzzle file at {path}. The repo ships one at {DATA_FILE}; "
-                                "point config.PUZZLES_FILE at your own to use that instead.")
+        where = ("the bundled puzzle file is missing from this checkout" if path == DATA_FILE
+                 else f"the repo's own is at {DATA_FILE}")
+        raise FileNotFoundError(f"no puzzle file at {path}: {where}.")
     data = json.loads(path.read_text())
     notes = {normalize(k): v for k, v in (data.get("category_notes") or {}).items()}
     play = [_puzzle(r, notes, i, "puzzle") for i, r in enumerate(data.get("puzzles", []))]
