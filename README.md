@@ -2,7 +2,7 @@
 
 A solver which takes in an empty Wheel Of Fortune board, a category, and then tries to solve the puzzle in as few turns as possible. 
 
-It does this by calculating **probabilities for every letter**, deciding which one to pick, and calculating its confidence in its answers so it can know when to stop guessing letters and solve the puzzle. It uses a small open-weight LLM ([Qwen/Qwen2.5-1.5B]([url](https://huggingface.co/Qwen/Qwen2.5-1.5B))), along with some nuances in order to achieve this.
+It does this by calculating **probabilities for every letter**, deciding which one to pick, and calculating its confidence in its answers so it can know when to stop guessing letters and solve the puzzle. It uses a small open-weight LLM ([Qwen/Qwen2.5-1.5B](https://huggingface.co/Qwen/Qwen2.5-1.5B)), along with some nuances in order to achieve this.
 
 EXAMPLE:
 ```
