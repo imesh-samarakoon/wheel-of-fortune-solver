@@ -63,8 +63,8 @@ The first solver run downloads the model itself (~3 GB for the 1.5B default) int
 `~/.cache/huggingface/`, once.
 
 **On Linux without a GPU, install the CPU-only torch first.** Plain `pip install torch` fetches the
-CUDA build and several GB of `nvidia-*` wheels you'll never use; the CPU-only index keeps the whole
-environment under 1 GB:
+CUDA build and about twenty `nvidia-*` wheels you'll never use — a 5.4 GB environment, measured. The
+CPU-only index brings that down to 981 MB:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu    # before requirements.txt

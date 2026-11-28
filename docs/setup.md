@@ -29,9 +29,9 @@ python -m pytest -q     # 88 tests, no model needed, a fraction of a second
 python config.py        # what's set and what's missing
 ```
 
-**Which torch you get.** On Linux, PyPI's `torch` is the **CUDA** build, and it pulls several GB of
-`nvidia-*` wheels whether or not you have a GPU. With no GPU, install the CPU-only build first and
-the whole environment comes to well under 1 GB:
+**Which torch you get.** On Linux, PyPI's `torch` is the **CUDA** build, and it pulls about twenty
+`nvidia-*` wheels whether or not you have a GPU. Measured on a CPU-only machine, that is a **5.4 GB**
+environment; the CPU-only build gives the same thing at **981 MB**. With no GPU, install it first:
 
 ```bash
 pip install torch --index-url https://download.pytorch.org/whl/cpu
