@@ -1,6 +1,9 @@
-# The solver needs a language model, which means PyTorch (a few hundred MB on CPU).
-# On an NVIDIA GPU, install the CUDA build of torch FIRST, following
-# https://pytorch.org/get-started/locally/ — then run this file for the rest.
+# The solver needs a language model, which means PyTorch — the bulk of the install.
+# On Linux, pip's default torch is the CUDA build: several GB of nvidia-* wheels,
+# whether or not you have a GPU. With no GPU, install the CPU-only build FIRST,
+# then run this file for the rest:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+# On an NVIDIA GPU, see https://pytorch.org/get-started/locally/
 # Apple Silicon needs nothing special.
 torch>=2.2
 transformers>=4.56

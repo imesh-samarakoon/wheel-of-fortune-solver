@@ -2,7 +2,7 @@
 
 A solver which takes in an empty Wheel Of Fortune board, a category, and then tries to solve the puzzle in as few turns as possible. 
 
-It does this by calculating **probabilities for every letter**, deciding which one to pick, and calculating its confidence in its answers so it can know when to stop guessing letters and solve the puzzle. It uses a small open-weight LLM ([Qwen/Qwen2.5-1.5B]([url](https://huggingface.co/Qwen/Qwen2.5-1.5B))), along with some nuances in order to achieve this.
+It does this by calculating **probabilities for every letter**, deciding which one to pick, and calculating its confidence in its answers so it can know when to stop guessing letters and solve the puzzle. It uses a small open-weight LLM ([Qwen/Qwen2.5-1.5B](https://huggingface.co/Qwen/Qwen2.5-1.5B)), along with some nuances in order to achieve this.
 
 EXAMPLE:
 ```
@@ -60,12 +60,22 @@ python -m pytest -q                                    # 88 tests, no model or n
 ```
 
 The first solver run downloads the model itself (~3 GB for the 1.5B default) into
-`~/.cache/huggingface/`, once. Optional:
+`~/.cache/huggingface/`, once.
 
-- **GPU** — on NVIDIA, install the CUDA build of torch *before* `requirements.txt`
-  ([selector](https://pytorch.org/get-started/locally/)). Apple Silicon uses `mps` automatically.
-- **The answer judge** — needs a [TypeSafe](https://typesafe.ai) API key in `TYPESAFE_API_KEY`.
-  Without it everything still works; `play.py` prints one note and plays on.
+**On Linux without a GPU, install the CPU-only torch first.** Plain `pip install torch` fetches the
+CUDA build and several GB of `nvidia-*` wheels you'll never use; the CPU-only index keeps the whole
+environment under 1 GB:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu    # before requirements.txt
+```
+
+macOS needs nothing special — its wheel is CPU-only already, and PyTorch uses Apple Silicon's GPU
+through `mps` automatically. On an NVIDIA card the default build is the one you want, or pick a
+CUDA version from the [selector](https://pytorch.org/get-started/locally/).
+
+**The answer judge** is optional — it needs a [TypeSafe](https://typesafe.ai) API key in
+`TYPESAFE_API_KEY`. Without it everything still works; `play.py` prints one note and plays on.
 
 [`docs/setup.md`](docs/setup.md) covers model choices, gated models, measured timings, and download
 or judge errors.

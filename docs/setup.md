@@ -22,17 +22,25 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-That pulls in PyTorch, which is a large download (a few hundred MB on CPU). Then:
+That pulls in PyTorch, which is the bulk of the download. Then:
 
 ```bash
 python -m pytest -q     # 88 tests, no model needed, a fraction of a second
 python config.py        # what's set and what's missing
 ```
 
-**On a GPU.** `pip install torch` gives you the CPU build on some platforms. If you have an NVIDIA
-card and want to use it, install the CUDA build first, following the selector at
-<https://pytorch.org/get-started/locally/>, then `pip install -r requirements.txt` for the rest.
-Apple Silicon needs nothing special — PyTorch uses the GPU through `mps` automatically.
+**Which torch you get.** On Linux, PyPI's `torch` is the **CUDA** build, and it pulls several GB of
+`nvidia-*` wheels whether or not you have a GPU. With no GPU, install the CPU-only build first and
+the whole environment comes to well under 1 GB:
+
+```bash
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements.txt
+```
+
+On an NVIDIA card you want the default build, or a specific CUDA version from the selector at
+<https://pytorch.org/get-started/locally/>. Apple Silicon needs nothing special — the macOS wheel is
+CPU-only already, and PyTorch uses the GPU through `mps` automatically.
 
 ---
 
