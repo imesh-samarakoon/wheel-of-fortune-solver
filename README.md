@@ -1,9 +1,10 @@
 # Wheel of Fortune solver
 
-Puts a **probability on every letter** of a Wheel of Fortune board, decides which one to call, and
-knows when to stop calling and guess the answer. It runs a small open-weight language model on your
-own machine — no account, no API key, nothing to sign up for.
+A solver which takes in an empty Wheel Of Fortune board, a category, and then tries to solve the puzzle in as few turns as possible. 
 
+It does this by calculating **probabilities for every letter**, deciding which one to pick, and calculating its confidence in its answers so it can know when to stop guessing letters and solve the puzzle. It uses a small open-weight LLM ([Qwen/Qwen2.5-1.5B]([url](https://huggingface.co/Qwen/Qwen2.5-1.5B))), along with some nuances in order to achieve this.
+
+EXAMPLE:
 ```
 ── TURN 3   __A__ _A__ ──────────────────────────────────────────────────────────
 called so far: A E R   (not in puzzle: E R)   7 letters hidden
@@ -14,42 +15,33 @@ solve signal : 0.083  (lower = surer; it guesses at or below the threshold)
 => calls L  (it said 100.0% in puzzle, expected 1.78x)  ...  appears 3x
 ```
 
-One turn later it solved it: `SMALL TALK`, four letters called, two of them misses.
+One turn later it solved it: `SMALL TALK`, taking a total of four turns.
 
 ## How it works
 
 A language model predicts **tokens** (`" Burt"`, `"aster"`), never single letters, so "what letter
 is in slot 7?" is not a question it can answer. So the solver never asks. It makes the model write
-**whole answers that fit the board**, keeps the model's own probability for each, and adds them up:
+**whole answers that fit the spaces (and letters) of the board**, keeps the model's own probability for each, and adds them up:
 
 ```
 P(letter is in the puzzle) = total probability of the candidate answers that contain it
 ```
 
-Which letter to call, how sure it is, and when to guess all fall out of that one sum. Each turn:
+Which letter to call, how sure it is, and when to guess all fall out of that one sum. Each turn, the solver will:
 
-1. **Prompt** the model with a few solved puzzles, then this puzzle's category and board.
+1. **Prompt** the model with a few solved puzzles, then this puzzle's category and current board state.
 2. **Filter its tokens** to those that could legally be written at the current board position — a
-   blank takes any uncalled letter, a revealed letter takes itself, punctuation must match. On an
-   empty board that's typically 2-5% of the model's probability.
-3. **Search** for the likeliest whole answers that fill the board exactly. Only partial answers that
-   have written the *same number of board characters* are compared, since a partial answer's log P
-   only ever falls as it grows; answers are held to one letter case so the model can't cheaply copy
-   the board's capitals. Both details matter enormously.
+   blank takes any uncalled letter, a revealed letter takes itself, punctuation must match. 
+3. **Search** for the likeliest whole answers that fill the board exactly
 4. **Normalize** over the answers found — that's `P(answer | clue, board)`, plain Bayes, no
    re-ranking or hand-tuned features.
-5. **Marginalize** to letters, and let a policy pick one (default: the most likely letter, then
+5. **Translate** whole words to letter probabilities, and let a policy pick one (default: the most likely letter, then
    switching to whichever best separates the top candidates).
-6. **Call it, reveal it, run again** — or guess, once the solver's own uncertainty drops below a
-   threshold.
+6. **Call it, reveal it, run again** — or guess, once the solver's confidence in its top answer exceeds a certain threshold
 
-The main failure mode is the true answer not being among the candidates, which makes every number
-confidently wrong. Two passes patch it: **filling one word** (`wof/slots.py`) tries every word from
-a word list in the last open board word and scores each whole answer, reaching answers a
-left-to-right search structurally can't (`A WISH COME TRUE` over `A Fish Come True`); the optional
-**answer judge** (`wof/judge.py`) asks a second model "is this real, familiar English?" per
-candidate and shifts probability to an explicit *"none of these"* when they're all junk, so the
-solver keeps calling instead of guessing nonsense.
+The hardest part about solving these puzzles is that there is a huge 'space' of potential words that might be solutions. Of course, we could use infinite compute to try and search through all possibilities, but that's boring. Instead, the solver tries to 'smartly' search for high confidence candidates by:
+1. **smart word search** (`wof/slots.py`) when the solver is confident in some words of a puzzle, but unsure about others, it will try and plug in lots of candidate words into the unknown word in order to find the best candidates. This helps the puzzle realize that the best word for the puzzle "A ____ Come True" is "Wish", not "Fish"
+2. **a smart judge** (`wof/judge.py`) asks a second model "is this real, familiar English?" to weed out candidates that are nonsense generated by the dumb model's 'simple' token search
 
 [`docs/how-it-works.md`](docs/how-it-works.md) has the full design, the measurements behind each
 decision, and what went wrong before it worked.
