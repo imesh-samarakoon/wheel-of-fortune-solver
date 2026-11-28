@@ -25,7 +25,7 @@ pip install -r requirements.txt
 That pulls in PyTorch, which is a large download (a few hundred MB on CPU). Then:
 
 ```bash
-python -m pytest -q     # 85 tests, no model needed, a fraction of a second
+python -m pytest -q     # 88 tests, no model needed, a fraction of a second
 python config.py        # what's set and what's missing
 ```
 
